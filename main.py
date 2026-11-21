@@ -1,19 +1,41 @@
 from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+import asyncio
 
 from services.medicine_lookup import detect_medicine_query
 from services.shop_optimizer import find_best_shops
-from services.symptoms_model import detect_symptoms
+from services import symptoms_model
+from services.symptoms_model import detect_symptoms, load_symptom_model
 from services.visit_plan_optimizer import optimize_visit_plan
 
 
-app = FastAPI(title="Medical Symptom Checker API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(asyncio.to_thread(load_symptom_model))
+    app.state.model_loading_task = task
+    try:
+        yield
+    finally:
+        if not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+
+app = FastAPI(title="Medical Symptom Checker API", lifespan=lifespan)
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "symptom_model_ready": symptoms_model.model_loaded.is_set(),
+        "symptom_model_error": symptoms_model.model_error,
+    }
 
 # Add CORS middleware to handle preflight requests
 app.add_middleware(
