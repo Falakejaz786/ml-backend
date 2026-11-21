@@ -26,6 +26,13 @@ def load_symptom_model():
         try:
             if model is None:
                 from sentence_transformers import SentenceTransformer
+                import torch
+
+                torch.set_num_threads(1)
+                try:
+                    torch.set_num_interop_threads(1)
+                except RuntimeError:
+                    pass
 
                 model = SentenceTransformer("all-MiniLM-L6-v2")
 

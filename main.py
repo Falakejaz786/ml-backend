@@ -13,6 +13,15 @@ from services.visit_plan_optimizer import optimize_visit_plan
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from pathlib import Path
+
+    cache_dir = Path("/data/huggingface")
+    if cache_dir.exists():
+        import os
+
+        os.environ["HF_HOME"] = str(cache_dir)
+        os.environ["TRANSFORMERS_CACHE"] = str(cache_dir)
+
     task = asyncio.create_task(asyncio.to_thread(load_symptom_model))
     app.state.model_loading_task = task
     try:

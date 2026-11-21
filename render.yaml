@@ -8,6 +8,12 @@ services:
     envVars:
       - key: ENV
         value: production
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: MKL_NUM_THREADS
+        value: "1"
+      - key: TOKENIZERS_PARALLELISM
+        value: "false"
     autoDeploy: true
     healthCheckPath: /health
     disk:
