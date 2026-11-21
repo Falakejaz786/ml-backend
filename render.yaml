@@ -9,7 +9,7 @@ services:
       - key: ENV
         value: production
     autoDeploy: true
-    healthCheckPath: /docs
+    healthCheckPath: /health
     disk:
       name: data
       mountPath: /data

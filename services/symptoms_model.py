@@ -1,9 +1,6 @@
-from sentence_transformers import SentenceTransformer, util
-
 from db import get_db
 
-# Initialize embedding model
-model = SentenceTransformer('all-MiniLM-L6-v2')
+model = None
 
 
 def detect_symptoms(user_input, top_k=7):
@@ -11,7 +8,14 @@ def detect_symptoms(user_input, top_k=7):
     Detects top medicines for given symptom or user text.
     Returns top_k medicines (id, name, brand).
     """
+    global model
+
     try:
+        if model is None:
+            from sentence_transformers import SentenceTransformer
+
+            model = SentenceTransformer('all-MiniLM-L6-v2')
+
         db = get_db()
         medicines_cursor = db.medicines.find({})
         medicines = list(medicines_cursor)
@@ -29,6 +33,8 @@ def detect_symptoms(user_input, top_k=7):
 
     # Precompute medicine uses embeddings
     medicine_uses = [", ".join(med.get("uses", [])) for med in medicines]
+    from sentence_transformers import util
+
     medicine_embeddings = model.encode(medicine_uses, convert_to_tensor=True)
 
     print(f"[Symptoms Model] Processing input: '{user_input}'")

@@ -10,6 +10,11 @@ from services.visit_plan_optimizer import optimize_visit_plan
 
 app = FastAPI(title="Medical Symptom Checker API")
 
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 # Add CORS middleware to handle preflight requests
 app.add_middleware(
     CORSMiddleware,

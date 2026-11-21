@@ -8,7 +8,6 @@ from pymongo.errors import ServerSelectionTimeoutError
 load_dotenv()
 
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/medley")
-print(f"[MongoDB Connection] Using URI: {MONGODB_URI}")
 
 _client = None
 _db = None
