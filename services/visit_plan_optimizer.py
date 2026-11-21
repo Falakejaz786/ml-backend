@@ -1,11 +1,30 @@
 """Service to optimize shop visit plans for a user's medicine cart."""
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from bson import ObjectId
 
 from db import get_db
 
+visit_plan_data_cache: Dict[str, Any] | None = None
 
-def convert_objectid(obj):
+
+def _get_visit_plan_data() -> Dict[str, Any]:
+    global visit_plan_data_cache
+
+    if visit_plan_data_cache is not None:
+        return visit_plan_data_cache
+
+    db = get_db()
+    visit_plan_data_cache = {
+        "db": db,
+        "shop_medicines": list(db.shopmedicines.find({})),
+        "shops": list(db.shops.find({})),
+        "medicines": list(db.medicines.find({})),
+        "users": list(db.users.find({})),
+    }
+    return visit_plan_data_cache
+
+
+def convert_objectid(obj: Any) -> Any:
     """Recursively convert ObjectId objects to strings in a dict/list."""
     if isinstance(obj, dict):
         return {k: convert_objectid(v) for k, v in obj.items()}
@@ -19,7 +38,7 @@ def convert_objectid(obj):
 def optimize_visit_plan(
     medicine_ids: List[str],
     quantities: Optional[List[int]] = None,
-) -> Dict:
+) -> Dict[str, Any]:
     """Generate an optimized visit plan to collect all medicines in the cart.
 
     Uses a greedy algorithm: repeatedly pick the nearest shop that covers 
@@ -38,12 +57,19 @@ def optimize_visit_plan(
     if not medicine_ids:
         return {"stops": [], "unavailable": []}
 
-    db = get_db()
-
-    # Fetch all shop-medicine relationships
-    shop_medicines = list(db.shopmedicines.find({}))
-    shops_collection = list(db.shops.find({}))
-    medicines_collection = list(db.medicines.find({}))
+    cached_data = _get_visit_plan_data()
+    shop_medicines = cached_data["shop_medicines"]
+    shops_collection = cached_data["shops"]
+    medicines_collection = cached_data["medicines"]
+    users_collection = cached_data["users"]
+    users_by_user_id = {
+        str(user.get("userId")): user for user in users_collection
+        if user.get("userId")
+    }
+    users_by_object_id = {
+        str(user["_id"]): user for user in users_collection
+        if user.get("_id")
+    }
 
     # Build lookup maps
     shops_by_id = {shop["shopId"]: shop for shop in shops_collection}
@@ -96,11 +122,11 @@ def optimize_visit_plan(
         medicine_quantities = {med_id: 1 for med_id in medicine_ids}
 
     remaining_meds = set(medicine_ids) - set(unavailable)
-    stops: List[Dict] = []
+    stops: List[Dict[str, Any]] = []
 
     while remaining_meds:
         best_shop_id: Optional[str] = None
-        best_covered = set()
+        best_covered: set[str] = set()
         best_distance = float('inf')
 
         # Score each shop by how many remaining medicines it covers
@@ -161,15 +187,14 @@ def optimize_visit_plan(
         if owner_field and len(owner_str) > 20:  # Likely an ObjectId or long ID
             try:
                 # Try looking up by userId
-                owner_user = db.users.find_one({"userId": owner_str})
+                owner_user = users_by_user_id.get(owner_str)
                 if owner_user and owner_user.get("name"):
                     owner_name = owner_user["name"]
                 else:
                     # Try looking up by _id if it's 24 chars (ObjectId)
                     if len(owner_str) == 24:
                         try:
-                            owner_user = db.users.find_one(
-                                {"_id": ObjectId(owner_str)})
+                            owner_user = users_by_object_id.get(owner_str)
                             if owner_user and owner_user.get("name"):
                                 owner_name = owner_user["name"]
                         except:
@@ -200,7 +225,7 @@ def optimize_visit_plan(
     # Sort stops by distance (nearest first)
     stops.sort(key=lambda s: s["distance_km"])
 
-    result = {
+    result: Dict[str, Any] = {
         "stops": stops,
         "unavailable": [
             {

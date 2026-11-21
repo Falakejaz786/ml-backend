@@ -1,13 +1,18 @@
 from typing import Dict, List, Optional
-
 import pandas as pd
 
 from db import get_db
 
+shop_dataframe_cache = None
+
 
 def _load_shop_dataframe() -> pd.DataFrame:
     """Load shop-medicine data from MongoDB into a pandas DataFrame."""
-    # Always fetch fresh data from MongoDB (no caching to avoid stale data)
+    global shop_dataframe_cache
+
+    if shop_dataframe_cache is not None:
+        return shop_dataframe_cache
+
     try:
         db = get_db()
 
@@ -56,6 +61,7 @@ def _load_shop_dataframe() -> pd.DataFrame:
 
         df = pd.DataFrame(rows)
         print(f"[Shop Optimizer] Loaded dataframe with {len(df)} rows")
+        shop_dataframe_cache = df
         return df
 
     except Exception as e:

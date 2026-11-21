@@ -1,7 +1,19 @@
 
 from typing import Dict, List, Optional
-
 from db import get_db
+
+medicines_cache = None
+
+
+def _get_medicines():
+    global medicines_cache
+
+    if medicines_cache is not None:
+        return medicines_cache
+
+    db = get_db()
+    medicines_cache = list(db.medicines.find({}))
+    return medicines_cache
 
 
 def detect_medicine_query(text: str, max_results: int = 5) -> List[Dict]:
@@ -18,9 +30,7 @@ def detect_medicine_query(text: str, max_results: int = 5) -> List[Dict]:
     scores = []  # Track match quality
 
     try:
-        db = get_db()
-        medicines_cursor = db.medicines.find({})
-        medicines = list(medicines_cursor)
+        medicines = _get_medicines()
 
         if not medicines:
             print(
@@ -99,9 +109,11 @@ def detect_medicine_query(text: str, max_results: int = 5) -> List[Dict]:
 
 def get_medicine_by_id(medicine_id: str) -> Optional[Dict]:
     try:
-        db = get_db()
-        med = db.medicines.find_one({"medicineId": medicine_id})
-        return med
+        medicines = _get_medicines()
+        return next(
+            (med for med in medicines if med.get("medicineId") == medicine_id),
+            None,
+        )
     except Exception as e:
         print(f"Error fetching medicine from MongoDB: {e}")
         return None
