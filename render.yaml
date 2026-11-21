@@ -8,6 +8,8 @@ services:
     envVars:
       - key: ENV
         value: production
+      - key: PYTHON_VERSION
+        value: "3.11.9"
       - key: OMP_NUM_THREADS
         value: "1"
       - key: MKL_NUM_THREADS
